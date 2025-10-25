@@ -17,6 +17,8 @@ import {
 import { Headphones } from "react-feather";
 import HostControls from "@/components/host-controls";
 import ListenerControls from "@/components/listener-controls";
+import Captions from "@/components/captions";
+import TranscriptLog from "@/components/transcript-log";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import CircleVisualizer from "./circle-visualizer";
@@ -188,6 +190,10 @@ export default function Party({ partyId }: PartyProps) {
       </div>
       <div className="absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
         <div className="flex flex-col items-center relative gap-24">
+          {/* Global captions in the center */}
+          <div className="text-3xl font-bold">
+            <Captions />
+          </div>
           {/* Active speakers as circles with per-person transcript bubbles */}
           <div className="flex flex-wrap items-center justify-center gap-6 max-w-[1000px]">
             {participants
@@ -204,6 +210,7 @@ export default function Party({ partyId }: PartyProps) {
           </div>
         </div>
       </div>
+      <TranscriptLog language={state.captionsLanguage} />
       <RoomAudioRenderer />
     </div>
   );
