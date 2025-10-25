@@ -36,7 +36,7 @@ export default function PartyPage({ params }: PartyPageProps) {
         audio={state.isHost}
         className="w-full h-full"
       >
-        {state.shouldConnect ? <Party /> : <Lobby partyId={party_id} />}
+        {state.shouldConnect ? <Party partyId={party_id} /> : <Lobby partyId={party_id} />}
       </LiveKitRoom>
     </PartyStateContext.Provider>
   );
