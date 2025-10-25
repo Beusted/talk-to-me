@@ -37,7 +37,7 @@ export default function Party() {
         <div className="flex justify-between">
           <div className="flex flex-col">
             <p>Listening Party</p>
-            <h1 className="font-bold">Billie Eilish</h1>
+            <h1 className="font-bold">Talk To Me - </h1>
           </div>
           <div>
             <div className="flex gap-2">
@@ -73,7 +73,7 @@ export default function Party() {
           </div>
         )}
       </div>
-      {/* <RoomAudioRenderer /> */}
+      <RoomAudioRenderer />
     </div>
   );
 }
