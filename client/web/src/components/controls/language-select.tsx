@@ -35,16 +35,35 @@ const LanguageSelect = () => {
 
   useEffect(() => {
     async function getLanguages() {
-      try {
-        const response = await room.localParticipant.performRpc({
-          destinationIdentity: "agent",
-          method: "get/languages",
-          payload: "",
-        });
-        const languages = JSON.parse(response);
-        setLanguages(languages);
-      } catch (error) {
-        console.error("RPC call failed: ", error);
+      // Retry logic: agent might not be ready immediately
+      const maxRetries = 5;
+      const retryDelay = 1000; // 1 second
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          // Add a small delay before first attempt to let agent initialize
+          if (attempt > 0) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          }
+
+          const response = await room.localParticipant.performRpc({
+            destinationIdentity: "agent",
+            method: "get/languages",
+            payload: "",
+            responseTimeout: 5000, // 5 second timeout
+          });
+          const languages = JSON.parse(response);
+          setLanguages(languages);
+          return; // Success, exit retry loop
+        } catch (error) {
+          console.warn(
+            `RPC call attempt ${attempt + 1}/${maxRetries} failed:`,
+            error
+          );
+          if (attempt === maxRetries - 1) {
+            console.error("RPC call failed after all retries");
+          }
+        }
       }
     }
 

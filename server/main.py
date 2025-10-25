@@ -96,15 +96,19 @@ class Translator:
             logger.error(f"Translation error: {e}", exc_info=True)
 
 
-def prewarm(proc: JobProcess):
-    proc.userdata["vad"] = silero.VAD.load()
-
-
 async def entrypoint(job: JobContext):
-    # Use Deepgram for reliable real-time transcription
-    stt_provider = deepgram.STT()
     tasks = []
     translators = {}
+
+    # Lazy initialization of STT provider
+    def get_stt_provider():
+        return deepgram.STT(
+            model="nova-2",
+            language="en",
+            interim_results=True,
+            smart_format=True,
+            punctuate=True,
+        )
 
     async def _forward_transcription(
         stt_stream: stt.SpeechStream,
@@ -134,6 +138,8 @@ async def entrypoint(job: JobContext):
         )
 
         # BYPASS VAD - Send frames directly to STT for testing
+        # Initialize STT provider here (lazy initialization)
+        stt_provider = get_stt_provider()
         stt_stream = stt_provider.stream()
 
         stt_task = asyncio.create_task(
@@ -143,13 +149,20 @@ async def entrypoint(job: JobContext):
 
         logger.info("Starting to receive audio frames and sending directly to STT (VAD bypassed)")
         frame_count = 0
-        async for ev in audio_stream:
-            frame_count += 1
-            if frame_count % 100 == 0:  # Log every 100 frames
-                logger.info(f"Received {frame_count} audio frames, pushing to STT")
+        try:
+            async for ev in audio_stream:
+                frame_count += 1
+                if frame_count % 100 == 0:  # Log every 100 frames
+                    logger.info(f"Received {frame_count} audio frames, pushing to STT")
 
-            # Push directly to STT (bypassing VAD for now)
-            stt_stream.push_frame(ev.frame)
+                # Push directly to STT (bypassing VAD for now)
+                stt_stream.push_frame(ev.frame)
+        except Exception as e:
+            logger.error(f"Error in audio stream processing: {e}", exc_info=True)
+        finally:
+            # Close the STT stream when done
+            await stt_stream.aclose()
+            logger.info("STT stream closed")
 
     @job.room.on("track_subscribed")
     def on_track_subscribed(
@@ -185,6 +198,8 @@ async def entrypoint(job: JobContext):
         languages_list = [asdict(lang) for lang in languages.values()]
         return json.dumps(languages_list)
 
+    logger.info("RPC method 'get/languages' registered")
+
 
 async def request_fnc(req: JobRequest):
     await req.accept(
@@ -196,6 +211,6 @@ async def request_fnc(req: JobRequest):
 if __name__ == "__main__":
     cli.run_app(
         WorkerOptions(
-            entrypoint_fnc=entrypoint, prewarm_fnc=prewarm, request_fnc=request_fnc
+            entrypoint_fnc=entrypoint, request_fnc=request_fnc
         )
     )
