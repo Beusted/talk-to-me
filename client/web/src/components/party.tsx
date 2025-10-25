@@ -4,8 +4,10 @@ import {
   useRoomContext,
   useParticipants,
   RoomAudioRenderer,
+  useRemoteParticipants,
+  useTracks,
 } from "@livekit/components-react";
-import { Participant } from "livekit-client";
+import { Participant, Track } from "livekit-client";
 import { Headphones } from "react-feather";
 import HostControls from "@/components/host-controls";
 import ListenerControls from "@/components/listener-controls";
@@ -21,6 +23,7 @@ export default function Party() {
   const room = useRoomContext();
   const participants = useParticipants();
   const { state } = usePartyState();
+  const remoteParticipants = useRemoteParticipants();
 
   useEffect(() => {
     const host = participants.find((p) => {
@@ -29,7 +32,98 @@ export default function Party() {
     if (host) {
       setHost(host);
     }
+
+    // Debug: log all participants
+    console.log("[Debug] All participants:", participants.map(p => ({
+      identity: p.identity,
+      isLocal: p.isLocal,
+      audioTracks: Array.from(p.audioTrackPublications.values()).map(pub => ({
+        trackName: pub.trackName,
+        trackSid: pub.trackSid,
+        isSubscribed: pub.isSubscribed
+      }))
+    })));
   }, [participants]);
+
+  // Listen for track published events
+  useEffect(() => {
+    if (!room) return;
+
+    const handleTrackPublished = (publication: any, participant: any) => {
+      console.log(`[Track Published] Participant: ${participant.identity}, Track: ${publication.trackName}, Kind: ${publication.kind}`);
+    };
+
+    const handleTrackSubscribed = (track: any, publication: any, participant: any) => {
+      console.log(`[Track Subscribed] Participant: ${participant.identity}, Track: ${publication.trackName}, Kind: ${track.kind}`);
+    };
+
+    room.on("trackPublished", handleTrackPublished);
+    room.on("trackSubscribed", handleTrackSubscribed);
+
+    return () => {
+      room.off("trackPublished", handleTrackPublished);
+      room.off("trackSubscribed", handleTrackSubscribed);
+    };
+  }, [room]);
+
+  // Custom audio handling: only play TTS audio for listeners
+  useEffect(() => {
+    if (!room || !host) return;
+
+    const isHost = host === room.localParticipant;
+
+    const handleTrackMuting = () => {
+      // Subscribe to all remote participants' tracks
+      remoteParticipants.forEach((participant) => {
+        participant.audioTrackPublications.forEach((publication) => {
+          const trackName = publication.trackName;
+          const participantIdentity = participant.identity;
+
+          console.log(`[Audio Filter] Participant: ${participantIdentity}, Track: ${trackName}, Subscribed: ${publication.isSubscribed}, HasTrack: ${!!publication.audioTrack}, IsHost: ${isHost}`);
+
+          if (isHost) {
+            // Host: mute all remote audio (shouldn't hear their own voice back or TTS)
+            if (publication.audioTrack) {
+              publication.audioTrack.setMuted(true);
+              console.log(`[Audio Filter] Muted for host: ${trackName}`);
+            }
+          } else {
+            // Listener: play audio from agent participant (TTS), mute audio from host
+            if (participantIdentity === "agent") {
+              console.log(`[Audio Filter] Found agent track: ${trackName}`);
+              if (publication.audioTrack) {
+                publication.audioTrack.setMuted(false);
+                console.log(`[Audio Filter] UNMUTED agent TTS track: ${trackName}`);
+              } else {
+                console.log(`[Audio Filter] Agent track not ready yet: ${trackName}`);
+              }
+            } else {
+              // Mute the original speaker audio from the host
+              if (publication.audioTrack) {
+                publication.audioTrack.setMuted(true);
+                console.log(`[Audio Filter] Muted host track: ${trackName}`);
+              }
+            }
+          }
+        });
+      });
+    };
+
+    // Run immediately
+    handleTrackMuting();
+
+    // Also listen for track subscription changes
+    const handleTrackSubscribed = () => {
+      console.log("[Audio Filter] Track subscription changed, reapplying filters");
+      handleTrackMuting();
+    };
+
+    room.on("trackSubscribed", handleTrackSubscribed);
+
+    return () => {
+      room.off("trackSubscribed", handleTrackSubscribed);
+    };
+  }, [room, remoteParticipants, host]);
 
   return (
     <div className="w-full h-full p-8 flex flex-col relative">

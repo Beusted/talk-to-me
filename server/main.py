@@ -36,6 +36,9 @@ class Language:
 languages = {
     "en": Language(code="en", name="English", flag="🇺🇸"),
     "vi": Language(code="vi", name="Vietnamese", flag="🇻🇳"),
+    "tl": Language(code="tl", name="Tagalog", flag="🇵🇭"),
+    "es": Language(code="es", name="Spanish", flag="🇪🇸"),
+    "zh": Language(code="zh", name="Mandarin Chinese", flag="🇨🇳"),
 }
 
 LanguageCode = Enum(
@@ -56,6 +59,9 @@ class Translator:
             ),
         )
         self.llm = openai.LLM(model="gpt-3.5-turbo")
+        self.tts = openai.TTS(voice="alloy")  # Using alloy voice for all languages
+        self.audio_source = None
+        self.audio_track = None
 
     async def translate(self, message: str, track: rtc.Track):
         try:
@@ -92,8 +98,45 @@ class Translator:
             print(
                 f"message: {message}, translated to {self.lang.value}: {translated_message}"
             )
+
+            # Generate and publish TTS audio
+            await self._publish_tts_audio(translated_message)
         except Exception as e:
             logger.error(f"Translation error: {e}", exc_info=True)
+
+    async def _publish_tts_audio(self, text: str):
+        """Generate TTS audio and publish it to the room"""
+        try:
+            logger.info(f"Generating TTS for: {text}")
+
+            # Create audio source and track if they don't exist
+            if self.audio_source is None:
+                self.audio_source = rtc.AudioSource(24000, 1)  # 24kHz, mono
+                self.audio_track = rtc.LocalAudioTrack.create_audio_track(
+                    f"tts-{self.lang.name}",
+                    self.audio_source
+                )
+                # Publish the audio track
+                await self.room.local_participant.publish_track(
+                    self.audio_track,
+                    rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
+                )
+                logger.info(f"Published TTS audio track: tts-{self.lang.name} for {self.lang.value}")
+
+            # Generate TTS audio using non-streaming synthesis
+            logger.info("Synthesizing TTS audio...")
+            tts_output = await self.tts.synthesize(text)
+
+            # Capture audio frames from the synthesized output
+            logger.info("Capturing TTS audio frames...")
+            frame_count = 0
+            async for audio_event in tts_output:
+                await self.audio_source.capture_frame(audio_event.frame)
+                frame_count += 1
+
+            logger.info(f"TTS audio complete: captured {frame_count} frames for {self.lang.value}")
+        except Exception as e:
+            logger.error(f"TTS error: {e}", exc_info=True)
 
 
 async def entrypoint(job: JobContext):
@@ -182,7 +225,7 @@ async def entrypoint(job: JobContext):
         When participant attributes change, handle new translation requests.
         """
         lang = changed_attributes.get("captions_language", None)
-        if lang and lang != LanguageCode.en.name and lang not in translators:
+        if lang and lang != "en" and lang not in translators:
             try:
                 # Create a translator for the requested language
                 target_language = LanguageCode[lang].value
