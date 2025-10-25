@@ -34,7 +34,7 @@ export default function Party() {
     console.log("[Debug] All participants:", participants.map(p => ({
       identity: p.identity,
       isLocal: p.isLocal,
-      audioTracks: Array.from(p.audioTrackPublications.values()).map(pub => ({
+      audioTracks: Array.from(p.audioTrackPublications.values() as IterableIterator<TrackPublication>).map(pub => ({
         trackName: pub.trackName,
         trackSid: pub.trackSid,
         isSubscribed: pub.isSubscribed
