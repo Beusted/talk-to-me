@@ -18,7 +18,7 @@ from livekit.agents import (
     transcription,
     utils,
 )
-from livekit.plugins import openai, silero, deepgram
+from livekit.plugins import openai, deepgram, silero
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,10 +35,7 @@ class Language:
 
 languages = {
     "en": Language(code="en", name="English", flag="🇺🇸"),
-    "es": Language(code="es", name="Spanish", flag="🇪🇸"),
-    "fr": Language(code="fr", name="French", flag="🇫🇷"),
-    "de": Language(code="de", name="German", flag="🇩🇪"),
-    "ja": Language(code="ja", name="Japanese", flag="🇯🇵"),
+    "vi": Language(code="vi", name="Vietnamese", flag="🇻🇳"),
 }
 
 LanguageCode = Enum(
@@ -54,39 +51,49 @@ class Translator:
         self.context = llm.ChatContext().append(
             role="system",
             text=(
-                f"You are a translator for language: {lang.value}"
-                f"Your only response should be the exact translation of input text in the {lang.value} language ."
+                f"You are a translator for language: {lang.value}. "
+                f"Your only response should be the exact translation of input text in the {lang.value} language."
             ),
         )
-        self.llm = openai.LLM()
+        self.llm = openai.LLM(model="gpt-3.5-turbo")
 
     async def translate(self, message: str, track: rtc.Track):
-        self.context.append(text=message, role="user")
-        stream = self.llm.chat(chat_ctx=self.context)
+        try:
+            logger.info(f"Translating to {self.lang.value}: {message}")
+            self.context.append(text=message, role="user")
 
-        translated_message = ""
-        async for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content is None:
-                break
-            translated_message += content
+            logger.info("Starting OpenAI LLM chat stream...")
+            stream = self.llm.chat(chat_ctx=self.context)
 
-        segment = rtc.TranscriptionSegment(
-            id=utils.misc.shortuuid("SG_"),
-            text=translated_message,
-            start_time=0,
-            end_time=0,
-            language=self.lang.name,
-            final=True,
-        )
-        transcription = rtc.Transcription(
-            self.room.local_participant.identity, track.sid, [segment]
-        )
-        await self.room.local_participant.publish_transcription(transcription)
+            translated_message = ""
+            async for chunk in stream:
+                content = chunk.choices[0].delta.content
+                if content is None:
+                    break
+                translated_message += content
 
-        print(
-            f"message: {message}, translated to {self.lang.value}: {translated_message}"
-        )
+            logger.info(f"Translation complete: {translated_message}")
+
+            # Publish text transcription as captions
+            segment = rtc.TranscriptionSegment(
+                id=utils.misc.shortuuid("SG_"),
+                text=translated_message,
+                start_time=0,
+                end_time=0,
+                language=self.lang.name,
+                final=True,
+            )
+            transcription = rtc.Transcription(
+                self.room.local_participant.identity, track.sid, [segment]
+            )
+            await self.room.local_participant.publish_transcription(transcription)
+
+            logger.info(f"Published {self.lang.value} transcription with language={self.lang.name}")
+            print(
+                f"message: {message}, translated to {self.lang.value}: {translated_message}"
+            )
+        except Exception as e:
+            logger.error(f"Translation error: {e}", exc_info=True)
 
 
 def prewarm(proc: JobProcess):
@@ -94,6 +101,7 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(job: JobContext):
+    # Use Deepgram for reliable real-time transcription
     stt_provider = deepgram.STT()
     tasks = []
     translators = {}
@@ -104,7 +112,9 @@ async def entrypoint(job: JobContext):
         track: rtc.Track,
     ):
         """Forward the transcription and log the transcript in the console"""
+        logger.info("Started transcription forwarding for track")
         async for ev in stt_stream:
+            logger.info(f"Received STT event: {ev.type}")
             stt_forwarder.update(ev)
             # log to console
             if ev.type == stt.SpeechEventType.INTERIM_TRANSCRIPT:
@@ -122,13 +132,23 @@ async def entrypoint(job: JobContext):
         stt_forwarder = transcription.STTSegmentsForwarder(
             room=job.room, participant=participant, track=track
         )
+
+        # BYPASS VAD - Send frames directly to STT for testing
         stt_stream = stt_provider.stream()
+
         stt_task = asyncio.create_task(
             _forward_transcription(stt_stream, stt_forwarder, track)
         )
         tasks.append(stt_task)
 
+        logger.info("Starting to receive audio frames and sending directly to STT (VAD bypassed)")
+        frame_count = 0
         async for ev in audio_stream:
+            frame_count += 1
+            if frame_count % 100 == 0:  # Log every 100 frames
+                logger.info(f"Received {frame_count} audio frames, pushing to STT")
+
+            # Push directly to STT (bypassing VAD for now)
             stt_stream.push_frame(ev.frame)
 
     @job.room.on("track_subscribed")
