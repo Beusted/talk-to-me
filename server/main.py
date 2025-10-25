@@ -63,7 +63,7 @@ class Translator:
         self.audio_source = None
         self.audio_track = None
 
-    async def translate(self, message: str, track: rtc.Track):
+    async def translate(self, message: str, track: rtc.Track, participant: rtc.RemoteParticipant):
         try:
             logger.info(f"Translating to {self.lang.value}: {message}")
             self.context.append(text=message, role="user")
@@ -90,7 +90,7 @@ class Translator:
                 final=True,
             )
             transcription = rtc.Transcription(
-                self.room.local_participant.identity, track.sid, [segment]
+                participant.identity, track.sid, [segment]
             )
             await self.room.local_participant.publish_transcription(transcription)
 
@@ -157,6 +157,7 @@ async def entrypoint(job: JobContext):
         stt_stream: stt.SpeechStream,
         stt_forwarder: transcription.STTSegmentsForwarder,
         track: rtc.Track,
+        participant: rtc.RemoteParticipant,
     ):
         """Forward the transcription and log the transcript in the console"""
         logger.info("Started transcription forwarding for track")
@@ -172,7 +173,7 @@ async def entrypoint(job: JobContext):
 
                 message = ev.alternatives[0].text
                 for translator in translators.values():
-                    asyncio.create_task(translator.translate(message, track))
+                    asyncio.create_task(translator.translate(message, track, participant))
 
     async def transcribe_track(participant: rtc.RemoteParticipant, track: rtc.Track):
         audio_stream = rtc.AudioStream(track)
@@ -186,7 +187,7 @@ async def entrypoint(job: JobContext):
         stt_stream = stt_provider.stream()
 
         stt_task = asyncio.create_task(
-            _forward_transcription(stt_stream, stt_forwarder, track)
+            _forward_transcription(stt_stream, stt_forwarder, track, participant)
         )
         tasks.append(stt_task)
 
