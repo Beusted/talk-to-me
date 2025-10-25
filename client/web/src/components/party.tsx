@@ -180,17 +180,22 @@ export default function Party() {
         )}
       </div>
       <div className="absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
-        {host && (
-          <div className="flex flex-col items-center relative gap-24">
-            {/* Visualizer Container */}
-            <div className="relative flex items-center justify-center w-[125px] h-[125px]">
-              <CircleVisualizer speaker={host} />
-            </div>
-
-            {/* Transcript */}
-            <Captions />
+        <div className="flex flex-col items-center relative gap-24">
+          {/* Active speakers as circles */}
+          <div className="flex flex-wrap items-center justify-center gap-6 max-w-[1000px]">
+            {participants.map((p) => (
+              <CircleVisualizer
+                key={p.sid ?? p.identity}
+                speaker={p}
+                size={125}
+                threshold={0.05}
+              />
+            ))}
           </div>
-        )}
+
+          {/* Transcript */}
+          <Captions />
+        </div>
       </div>
       <RoomAudioRenderer />
     </div>

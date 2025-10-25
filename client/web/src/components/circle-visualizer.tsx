@@ -4,12 +4,25 @@ import { useState, useEffect, useRef } from "react";
 
 export interface CircleVisualizerProps {
   speaker: Participant;
+  size?: number; // outer container size in px
+  threshold?: number; // speaking threshold (0..1)
+  showOnlyWhenSpeaking?: boolean;
 }
 
-export default function CircleVisualizer({ speaker }: CircleVisualizerProps) {
-  // Hook to track the current volume
+export default function CircleVisualizer({
+  speaker,
+  size = 125,
+  threshold = 0.05,
+  showOnlyWhenSpeaking = false,
+}: CircleVisualizerProps) {
+  // Safely get the first audio publication (may be undefined for listeners)
+  const pubs = Array.from(speaker.audioTrackPublications.values());
+  const publication =
+    pubs.find((p) => p.source === Track.Source.Microphone) ?? pubs[0];
+
+  // Hook to track the current volume (falls back gracefully when no track)
   const volume = useTrackVolume({
-    publication: speaker.audioTrackPublications.values().next().value!,
+    publication,
     source: Track.Source.Microphone,
     participant: speaker,
   });
@@ -43,20 +56,34 @@ export default function CircleVisualizer({ speaker }: CircleVisualizerProps) {
 
       lastVolumeRef.current = newVolume; // Update the ref for the next iteration
       setSmoothedVolume(newVolume); // Update state for rendering
-    }, 25); // Update every 50ms
+    }, 25); // Update every 25ms
 
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, [smoothingFactor]); // Only depends on the smoothing factor
 
+  const isSpeaking = smoothedVolume > threshold;
+
+  // If we only want to show active talkers, hide when below threshold
+  if (showOnlyWhenSpeaking && !isSpeaking) {
+    return null;
+  }
+
+  // Compute inner circle size to keep layout stable even for silent participants
+  const innerSize = Math.round(size * (0.55 + Math.min(0.6, smoothedVolume)));
+
   return (
     <div
-      style={{
-        width: `${Math.round(100 + smoothedVolume * 200)}px`,
-        height: `${Math.round(100 + smoothedVolume * 200)}px`,
-      }}
-      className="bg-black rounded-full absolute flex items-center justify-center"
+      className="relative flex items-center justify-center"
+      style={{ width: `${size}px`, height: `${size}px` }}
     >
-      <div className="font-bold text-white">{speaker.identity}</div>
+      <div
+        style={{ width: `${innerSize}px`, height: `${innerSize}px` }}
+        className={`bg-black rounded-full flex items-center justify-center transition-all duration-75 ${isSpeaking ? "opacity-100 ring-2 ring-white" : "opacity-40"}`}
+      >
+        <div className="font-bold text-white text-xs sm:text-sm truncate max-w-[90%] text-center px-2">
+          {speaker.identity}
+        </div>
+      </div>
     </div>
   );
 }
