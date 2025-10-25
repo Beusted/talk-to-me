@@ -36,7 +36,6 @@ export const reducer = (state: State, action: Action): State => {
       return { ...state, isHost: action.payload };
     default:
       // Ensure exhaustive check
-      const _: never = action;
       throw new Error(`Unknown action: ${JSON.stringify(action)}`);
   }
 };

@@ -3,8 +3,6 @@ import { useState, useEffect } from "react";
 import {
   TranscriptionSegment,
   RoomEvent,
-  TrackPublication,
-  Participant,
 } from "livekit-client";
 import { usePartyState } from "@/hooks/usePartyState";
 
@@ -19,9 +17,7 @@ export default function Captions() {
 
   useEffect(() => {
     const updateTranscriptions = (
-      segments: TranscriptionSegment[],
-      participant?: Participant,
-      publication?: TrackPublication
+      segments: TranscriptionSegment[]
     ) => {
       setTranscriptions((prev) => {
         // Create a copy of the previous state
@@ -29,7 +25,8 @@ export default function Captions() {
 
         for (const segment of segments) {
           // Extract the language and id from the segment
-          let { language, id } = segment;
+          let { language } = segment;
+          const { id } = segment;
 
           if (language === "") {
             language = "en";

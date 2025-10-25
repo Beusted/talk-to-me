@@ -8,7 +8,7 @@ export default function MicToggle() {
   return (
     <Button
       variant="outline"
-      onClick={(e) => {
+      onClick={() => {
         room.localParticipant.setMicrophoneEnabled(
           !room.localParticipant.isMicrophoneEnabled
         );

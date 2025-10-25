@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { useRoomContext, useVoiceAssistant } from "@livekit/components-react";
 import { usePartyState } from "@/hooks/usePartyState";
-import { ConnectionState } from "livekit-client";
 
 interface Language {
   code: string;

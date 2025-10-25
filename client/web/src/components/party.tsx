@@ -5,9 +5,8 @@ import {
   useParticipants,
   RoomAudioRenderer,
   useRemoteParticipants,
-  useTracks,
 } from "@livekit/components-react";
-import { Participant, Track } from "livekit-client";
+import { Participant, TrackPublication } from "livekit-client";
 import { Headphones } from "react-feather";
 import HostControls from "@/components/host-controls";
 import ListenerControls from "@/components/listener-controls";
@@ -22,7 +21,6 @@ export default function Party() {
 
   const room = useRoomContext();
   const participants = useParticipants();
-  const { state } = usePartyState();
   const remoteParticipants = useRemoteParticipants();
 
   useEffect(() => {
@@ -49,11 +47,11 @@ export default function Party() {
   useEffect(() => {
     if (!room) return;
 
-    const handleTrackPublished = (publication: any, participant: any) => {
+    const handleTrackPublished = (publication: TrackPublication, participant: Participant) => {
       console.log(`[Track Published] Participant: ${participant.identity}, Track: ${publication.trackName}, Kind: ${publication.kind}`);
     };
 
-    const handleTrackSubscribed = (track: any, publication: any, participant: any) => {
+    const handleTrackSubscribed = (track: MediaStreamTrack, publication: TrackPublication, participant: Participant) => {
       console.log(`[Track Subscribed] Participant: ${participant.identity}, Track: ${publication.trackName}, Kind: ${track.kind}`);
     };
 

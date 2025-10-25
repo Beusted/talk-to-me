@@ -9,7 +9,7 @@ export default function CaptionsToggle() {
     <Button
       variant="outline"
       className=" flex items-center justify-center"
-      onClick={(e) => {
+      onClick={() => {
         dispatch({
           type: "SET_CAPTIONS_ENABLED",
           payload: !state.captionsEnabled,
