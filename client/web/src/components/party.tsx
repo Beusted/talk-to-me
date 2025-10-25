@@ -20,7 +20,8 @@ import ListenerControls from "@/components/listener-controls";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import CircleVisualizer from "./circle-visualizer";
-import Captions from "@/components/captions";
+import { usePartyState } from "@/hooks/usePartyState";
+import { useTranscriptionsByParticipant } from "@/hooks/useTranscriptions";
 
 export default function Party() {
   const [host, setHost] = useState<Participant | undefined>();
@@ -28,6 +29,8 @@ export default function Party() {
   const room = useRoomContext();
   const participants = useParticipants();
   const remoteParticipants = useRemoteParticipants();
+  const { state } = usePartyState();
+  const transcriptsByParticipant = useTranscriptionsByParticipant(state.captionsLanguage);
 
   useEffect(() => {
     const host = participants.find((p) => {
@@ -181,7 +184,7 @@ export default function Party() {
       </div>
       <div className="absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
         <div className="flex flex-col items-center relative gap-24">
-          {/* Active speakers as circles */}
+          {/* Active speakers as circles with per-person transcript bubbles */}
           <div className="flex flex-wrap items-center justify-center gap-6 max-w-[1000px]">
             {participants.map((p) => (
               <CircleVisualizer
@@ -189,12 +192,10 @@ export default function Party() {
                 speaker={p}
                 size={125}
                 threshold={0.05}
+                transcript={transcriptsByParticipant[p.sid]}
               />
             ))}
           </div>
-
-          {/* Transcript */}
-          <Captions />
         </div>
       </div>
       <RoomAudioRenderer />

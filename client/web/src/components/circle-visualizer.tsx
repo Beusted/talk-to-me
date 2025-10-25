@@ -31,6 +31,7 @@ export interface CircleVisualizerProps {
   size?: number; // outer container size in px
   threshold?: number; // speaking threshold (0..1)
   showOnlyWhenSpeaking?: boolean;
+  transcript?: string; // latest transcript to display near the circle
 }
 
 export default function CircleVisualizer({
@@ -38,6 +39,7 @@ export default function CircleVisualizer({
   size = 125,
   threshold = 0.05,
   showOnlyWhenSpeaking = false,
+  transcript,
 }: CircleVisualizerProps) {
   // Safely get the first audio publication (may be undefined for listeners)
   const pubs = Array.from(speaker.audioTrackPublications.values());
@@ -115,6 +117,15 @@ export default function CircleVisualizer({
           {speaker.identity}
         </div>
       </div>
+
+      {transcript ? (
+        <div
+          className="absolute left-full ml-3 top-1/2 -translate-y-1/2 max-w-[260px] rounded-xl px-3 py-2 text-sm shadow-md border"
+          style={{ backgroundColor: color, color: labelColor }}
+        >
+          <span className="break-words">{transcript}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
