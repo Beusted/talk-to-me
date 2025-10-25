@@ -13,7 +13,6 @@ import ListenerControls from "@/components/listener-controls";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import CircleVisualizer from "./circle-visualizer";
-import { usePartyState } from "@/hooks/usePartyState";
 import Captions from "@/components/captions";
 
 export default function Party() {

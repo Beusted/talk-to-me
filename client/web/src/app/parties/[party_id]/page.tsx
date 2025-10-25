@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useReducer, use } from "react";
-import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
+import { LiveKitRoom } from "@livekit/components-react";
 import Party from "@/components/party";
 import Lobby from "@/components/lobby";
 import { State, reducer, PartyStateContext } from "@/hooks/usePartyState";

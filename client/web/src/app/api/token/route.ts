@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 import {
   AccessTokenOptions,
   VideoGrant,
   AccessToken,
-  RoomServiceClient,
 } from "livekit-server-sdk";
 
 export interface TokenResult {
@@ -15,12 +14,6 @@ export interface TokenResult {
 
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
-const livekitHost = process.env.NEXT_PUBLIC_LIVEKIT_URL!.replace(
-  "wss://",
-  "https://"
-);
-
-const roomService = new RoomServiceClient(livekitHost);
 
 const createToken = (userInfo: AccessTokenOptions, grant: VideoGrant) => {
   const at = new AccessToken(apiKey, apiSecret, userInfo);
