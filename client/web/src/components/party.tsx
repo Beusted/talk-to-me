@@ -6,7 +6,7 @@ import {
   RoomAudioRenderer,
   useRemoteParticipants,
 } from "@livekit/components-react";
-import { Participant, TrackPublication } from "livekit-client";
+import { Participant, TrackPublication, RemoteTrack, RemoteTrackPublication, RemoteParticipant } from "livekit-client";
 import { Headphones } from "react-feather";
 import HostControls from "@/components/host-controls";
 import ListenerControls from "@/components/listener-controls";
@@ -50,7 +50,7 @@ export default function Party() {
       console.log(`[Track Published] Participant: ${participant.identity}, Track: ${publication.trackName}, Kind: ${publication.kind}`);
     };
 
-    const handleTrackSubscribed = (track: MediaStreamTrack, publication: TrackPublication, participant: Participant) => {
+    const handleTrackSubscribed = (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
       console.log(`[Track Subscribed] Participant: ${participant.identity}, Track: ${publication.trackName}, Kind: ${track.kind}`);
     };
 
