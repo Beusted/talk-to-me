@@ -23,7 +23,11 @@ import CircleVisualizer from "./circle-visualizer";
 import { usePartyState } from "@/hooks/usePartyState";
 import { useTranscriptionsByParticipant } from "@/hooks/useTranscriptions";
 
-export default function Party() {
+interface PartyProps {
+  partyId: string;
+}
+
+export default function Party({ partyId }: PartyProps) {
   const [host, setHost] = useState<Participant | undefined>();
 
   const room = useRoomContext();
@@ -159,7 +163,7 @@ export default function Party() {
         <div className="flex justify-between">
           <div className="flex flex-col">
             <p>Listening Party</p>
-            <h1 className="font-bold">Talk To Me - </h1>
+            <h1 className="font-bold">{ partyId }</h1>
           </div>
           <div>
             <div className="flex gap-2">
