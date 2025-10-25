@@ -2,6 +2,30 @@ import { Participant, Track } from "livekit-client";
 import { useTrackVolume } from "@livekit/components-react";
 import { useState, useEffect, useRef } from "react";
 
+// Helpers
+function parseColorFromMetadata(meta?: string | null): string | undefined {
+  if (!meta) return undefined;
+  try {
+    const obj = JSON.parse(meta);
+    if (typeof obj?.color === "string") return obj.color;
+  } catch {
+    // If metadata is just a color string
+    if (/^#([0-9a-fA-F]{3}){1,2}$/.test(meta)) return meta;
+  }
+  return undefined;
+}
+
+function textColorForBg(hex?: string): "#000" | "#fff" {
+  if (!hex) return "#fff";
+  const c = hex.replace("#", "");
+  const bigint = parseInt(c.length === 3 ? c.split("").map((ch) => ch + ch).join("") : c, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 128 ? "#000" : "#fff";
+}
+
 export interface CircleVisualizerProps {
   speaker: Participant;
   size?: number; // outer container size in px
@@ -71,16 +95,23 @@ export default function CircleVisualizer({
   // Compute inner circle size to keep layout stable even for silent participants
   const innerSize = Math.round(size * (0.55 + Math.min(0.6, smoothedVolume)));
 
+  // Color from participant metadata (fallback to black)
+  const color = parseColorFromMetadata(speaker.metadata) ?? "#000000";
+  const labelColor = textColorForBg(color);
+
   return (
     <div
       className="relative flex items-center justify-center"
       style={{ width: `${size}px`, height: `${size}px` }}
     >
       <div
-        style={{ width: `${innerSize}px`, height: `${innerSize}px` }}
-        className={`bg-black rounded-full flex items-center justify-center transition-all duration-75 ${isSpeaking ? "opacity-100 ring-2 ring-white" : "opacity-40"}`}
+        style={{ width: `${innerSize}px`, height: `${innerSize}px`, backgroundColor: color }}
+        className={`rounded-full flex items-center justify-center transition-all duration-75 ${isSpeaking ? "opacity-100 ring-2 ring-white" : "opacity-40"}`}
       >
-        <div className="font-bold text-white text-xs sm:text-sm truncate max-w-[90%] text-center px-2">
+        <div
+          className="font-bold text-xs sm:text-sm truncate max-w-[90%] text-center px-2"
+          style={{ color: labelColor }}
+        >
           {speaker.identity}
         </div>
       </div>

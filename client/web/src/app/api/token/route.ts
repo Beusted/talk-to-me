@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
     const partyId = searchParams.get("party_id")!;
     const userName = searchParams.get("name")!;
     const host = searchParams.get("host")! === "true";
+    const color = searchParams.get("color");
 
     const roomName = partyId;
     const identity = userName;
@@ -55,7 +56,9 @@ export async function GET(request: NextRequest) {
     };
     const userInfo: AccessTokenOptions = {
       identity,
-    };
+      name: userName,
+      metadata: JSON.stringify({ color }),
+    } as AccessTokenOptions;
     const token = await createToken(userInfo, grant);
 
     const result: TokenResult = {

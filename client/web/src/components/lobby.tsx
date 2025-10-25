@@ -19,9 +19,20 @@ interface LobbyProps {
   partyId: string;
 }
 
+const PALETTE: string[] = [
+  "#EF4444", "#F59E0B", "#FBBF24", "#84CC16", "#22C55E",
+  "#10B981", "#06B6D4", "#3B82F6", "#6366F1", "#8B5CF6",
+  "#A855F7", "#D946EF", "#EC4899", "#F43F5E", "#14B8A6",
+  "#0EA5E9", "#60A5FA", "#34D399", "#F97316", "#EAB308",
+];
+
 export default function Lobby({ partyId }: LobbyProps) {
   const [name, setName] = useState<string>("");
   const [isHost, setIsHost] = useState<boolean>(false);
+  const [color, setColor] = useState<string>(() => {
+    const idx = Math.floor(Math.random() * PALETTE.length);
+    return PALETTE[idx];
+  });
   const { dispatch } = usePartyState();
 
   const onJoin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -32,7 +43,7 @@ export default function Lobby({ partyId }: LobbyProps) {
       const response = await fetch(
         `/api/token?party_id=${encodeURIComponent(
           partyId
-        )}&name=${encodeURIComponent(name)}&host=${isHost}`
+        )}&name=${encodeURIComponent(name)}&host=${isHost}&color=${encodeURIComponent(color)}`
       );
 
       if (!response.ok) {
@@ -49,6 +60,11 @@ export default function Lobby({ partyId }: LobbyProps) {
       console.error("Error:", error);
       // Handle error (e.g., show an error message to the user)
     }
+  };
+
+  const randomizeColor = () => {
+    const idx = Math.floor(Math.random() * PALETTE.length);
+    setColor(PALETTE[idx]);
   };
 
   return (
@@ -85,6 +101,35 @@ export default function Lobby({ partyId }: LobbyProps) {
                 >
                   Party host
                 </label>
+              </div>
+            </div>
+
+            {/* Color picker */}
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Circle color</Label>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-5 h-5 rounded-full border"
+                    style={{ backgroundColor: color }}
+                    aria-label="Selected color preview"
+                  />
+                  <Button type="button" variant="outline" onClick={randomizeColor}>
+                    Random
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-10 gap-2">
+                {PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`h-7 rounded-full border ${c === color ? "ring-2 ring-offset-2 ring-black" : ""}`}
+                    style={{ backgroundColor: c }}
+                    aria-label={`Select color ${c}`}
+                  />
+                ))}
               </div>
             </div>
           </CardContent>
