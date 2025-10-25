@@ -146,8 +146,8 @@ async def entrypoint(job: JobContext):
     # Lazy initialization of STT provider
     def get_stt_provider():
         return deepgram.STT(
-            model="nova-2",
-            language="en",
+            model="nova-3",
+            language="multi",
             interim_results=True,
             smart_format=True,
             punctuate=True,
