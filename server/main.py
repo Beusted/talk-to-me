@@ -82,7 +82,7 @@ class Translator:
 
             # Publish text transcription as captions
             segment = rtc.TranscriptionSegment(
-                id=utils.misc.shortuuid("SG_"),
+                id="SG_" + utils.misc.shortuuid(),
                 text=translated_message,
                 start_time=0,
                 end_time=0,
