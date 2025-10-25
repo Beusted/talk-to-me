@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { RoomEvent, TranscriptionSegment } from "livekit-client";
 import { useRoomContext } from "@livekit/components-react";
@@ -38,7 +40,9 @@ export function useTranscriptionsByParticipant(language?: string) {
     };
 
     room.on(RoomEvent.TranscriptionReceived, handle);
-    return () => room.off(RoomEvent.TranscriptionReceived, handle);
+    return () => {
+      room.off(RoomEvent.TranscriptionReceived, handle);
+    };
   }, [room, language]);
 
   return byParticipant;

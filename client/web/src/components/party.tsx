@@ -186,15 +186,17 @@ export default function Party() {
         <div className="flex flex-col items-center relative gap-24">
           {/* Active speakers as circles with per-person transcript bubbles */}
           <div className="flex flex-wrap items-center justify-center gap-6 max-w-[1000px]">
-            {participants.map((p) => (
-              <CircleVisualizer
-                key={p.sid ?? p.identity}
-                speaker={p}
-                size={125}
-                threshold={0.05}
-                transcript={transcriptsByParticipant[p.sid]}
-              />
-            ))}
+            {participants
+              .filter((p) => p.identity !== "agent")
+              .map((p) => (
+                <CircleVisualizer
+                  key={p.sid ?? p.identity}
+                  speaker={p}
+                  size={125}
+                  threshold={0.05}
+                  transcript={transcriptsByParticipant[p.sid]}
+                />
+              ))}
           </div>
         </div>
       </div>
