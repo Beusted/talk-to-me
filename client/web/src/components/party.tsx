@@ -6,7 +6,14 @@ import {
   RoomAudioRenderer,
   useRemoteParticipants,
 } from "@livekit/components-react";
-import { Participant, TrackPublication, RemoteTrack, RemoteTrackPublication, RemoteParticipant } from "livekit-client";
+import {
+  Participant,
+  TrackPublication,
+  RemoteTrack,
+  RemoteTrackPublication,
+  RemoteParticipant,
+  RemoteAudioTrack,
+} from "livekit-client";
 import { Headphones } from "react-feather";
 import HostControls from "@/components/host-controls";
 import ListenerControls from "@/components/listener-controls";
@@ -68,6 +75,27 @@ export default function Party() {
     if (!room || !host) return;
 
     const isHost = host === room.localParticipant;
+    const setRemoteTrackMuted = (
+      publication: RemoteTrackPublication,
+      muted: boolean,
+      trackName: string
+    ) => {
+      const audioTrack = publication.audioTrack as RemoteAudioTrack | undefined;
+
+      if (!audioTrack) {
+        console.log(
+          `[Audio Filter] Remote audio track not ready to ${
+            muted ? "mute" : "unmute"
+          }: ${trackName}`
+        );
+        return;
+      }
+
+      audioTrack.setVolume(muted ? 0 : 1);
+      audioTrack.attachedElements.forEach((element) => {
+        element.muted = muted;
+      });
+    };
 
     const handleTrackMuting = () => {
       // Subscribe to all remote participants' tracks
@@ -81,7 +109,7 @@ export default function Party() {
           if (isHost) {
             // Host: mute all remote audio (shouldn't hear their own voice back or TTS)
             if (publication.audioTrack) {
-              publication.audioTrack.setMuted(true);
+              setRemoteTrackMuted(publication, true, trackName);
               console.log(`[Audio Filter] Muted for host: ${trackName}`);
             }
           } else {
@@ -89,7 +117,7 @@ export default function Party() {
             if (participantIdentity === "agent") {
               console.log(`[Audio Filter] Found agent track: ${trackName}`);
               if (publication.audioTrack) {
-                publication.audioTrack.setMuted(false);
+                setRemoteTrackMuted(publication, false, trackName);
                 console.log(`[Audio Filter] UNMUTED agent TTS track: ${trackName}`);
               } else {
                 console.log(`[Audio Filter] Agent track not ready yet: ${trackName}`);
@@ -97,7 +125,7 @@ export default function Party() {
             } else {
               // Mute the original speaker audio from the host
               if (publication.audioTrack) {
-                publication.audioTrack.setMuted(true);
+                setRemoteTrackMuted(publication, true, trackName);
                 console.log(`[Audio Filter] Muted host track: ${trackName}`);
               }
             }
