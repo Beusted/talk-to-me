@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { RoomEvent, TranscriptionSegment } from "livekit-client";
 import { useRoomContext } from "@livekit/components-react";
-import { Button } from "@/components/ui/button";
 import { Mode } from "@/hooks/usePartyState";
 
 type SegmentWithMeta = TranscriptionSegment & {
