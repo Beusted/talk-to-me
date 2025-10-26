@@ -33,6 +33,7 @@ interface PartyProps {
 
 export default function Party({ partyId }: PartyProps) {
   const [host, setHost] = useState<Participant | undefined>();
+  const [chatCollapsed, setChatCollapsed] = useState(false);
 
   const room = useRoomContext();
   const participants = useParticipants();
@@ -115,29 +116,41 @@ export default function Party({ partyId }: PartyProps) {
           const trackName = publication.trackName;
           const participantIdentity = participant.identity;
 
-          console.log(`[Audio Filter] Participant: ${participantIdentity}, Track: ${trackName}, Subscribed: ${publication.isSubscribed}, HasTrack: ${!!publication.audioTrack}, IsHost: ${isHost}`);
+          console.log(`[Audio Filter] Participant: ${participantIdentity}, Track: ${trackName}, Subscribed: ${publication.isSubscribed}, HasTrack: ${!!publication.audioTrack}, IsHost: ${isHost}, Mode: ${state.mode}`);
 
-          if (isHost) {
-            // Host: mute all remote audio (shouldn't hear their own voice back or TTS)
+          // In single mode, always play agent TTS audio
+          if (state.mode === "single" && participantIdentity === "agent") {
+            console.log(`[Audio Filter] Single mode - Found agent track: ${trackName}`);
             if (publication.audioTrack) {
-              setRemoteTrackMuted(publication, true, trackName);
-              console.log(`[Audio Filter] Muted for host: ${trackName}`);
-            }
-          } else {
-            // Listener: play audio from agent participant (TTS), mute audio from host
-            if (participantIdentity === "agent") {
-              console.log(`[Audio Filter] Found agent track: ${trackName}`);
-              if (publication.audioTrack) {
-                setRemoteTrackMuted(publication, false, trackName);
-                console.log(`[Audio Filter] UNMUTED agent TTS track: ${trackName}`);
-              } else {
-                console.log(`[Audio Filter] Agent track not ready yet: ${trackName}`);
-              }
+              setRemoteTrackMuted(publication, false, trackName);
+              console.log(`[Audio Filter] UNMUTED agent TTS track in single mode: ${trackName}`);
             } else {
-              // Mute the original speaker audio from the host
+              console.log(`[Audio Filter] Agent track not ready yet: ${trackName}`);
+            }
+          } else if (state.mode === "multi") {
+            // Multi-user mode: original behavior
+            if (isHost) {
+              // Host: mute all remote audio (shouldn't hear their own voice back or TTS)
               if (publication.audioTrack) {
                 setRemoteTrackMuted(publication, true, trackName);
-                console.log(`[Audio Filter] Muted host track: ${trackName}`);
+                console.log(`[Audio Filter] Muted for host: ${trackName}`);
+              }
+            } else {
+              // Listener: play audio from agent participant (TTS), mute audio from host
+              if (participantIdentity === "agent") {
+                console.log(`[Audio Filter] Found agent track: ${trackName}`);
+                if (publication.audioTrack) {
+                  setRemoteTrackMuted(publication, false, trackName);
+                  console.log(`[Audio Filter] UNMUTED agent TTS track: ${trackName}`);
+                } else {
+                  console.log(`[Audio Filter] Agent track not ready yet: ${trackName}`);
+                }
+              } else {
+                // Mute the original speaker audio from the host
+                if (publication.audioTrack) {
+                  setRemoteTrackMuted(publication, true, trackName);
+                  console.log(`[Audio Filter] Muted host track: ${trackName}`);
+                }
               }
             }
           }
@@ -159,7 +172,7 @@ export default function Party({ partyId }: PartyProps) {
     return () => {
       room.off("trackSubscribed", handleTrackSubscribed);
     };
-  }, [room, remoteParticipants, host]);
+  }, [room, remoteParticipants, host, state.mode]);
 
   // Render appropriate controls based on mode
   const renderControls = () => {
@@ -186,17 +199,26 @@ export default function Party({ partyId }: PartyProps) {
               <h1 className="font-bold">{ partyId }</h1>
             </div>
           </div>
-          <div>
-            <div className="flex gap-2">
+          <div className="relative z-50">
+            <div className="flex flex-col gap-2 items-end">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="uppercase bg-[#E71A32] font-bold text-white"
+                >
+                  Live
+                </Button>
+                <Button variant="outline">
+                  <Headphones />
+                  <p>{participants.length - 1}</p>
+                </Button>
+              </div>
               <Button
                 variant="outline"
-                className="uppercase bg-[#E71A32] font-bold text-white"
+                size="sm"
+                onClick={() => setChatCollapsed(!chatCollapsed)}
               >
-                Live
-              </Button>
-              <Button variant="outline">
-                <Headphones />
-                <p>{participants.length - 1}</p>
+                {chatCollapsed ? "Show" : "Hide"} Chat
               </Button>
             </div>
           </div>
@@ -232,6 +254,7 @@ export default function Party({ partyId }: PartyProps) {
         mode={state.mode}
         inputLanguage={state.inputLanguage}
         outputLanguage={state.outputLanguage}
+        collapsed={chatCollapsed}
       />
       {state.mode === "single" && renderControls()}
       <RoomAudioRenderer />

@@ -25,6 +25,29 @@ const SingleUserControls = () => {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [isMuted, setIsMuted] = useState(false);
 
+  // Sync isMuted state with actual microphone state
+  useEffect(() => {
+    if (room.localParticipant) {
+      const updateMutedState = () => {
+        const micEnabled = room.localParticipant.isMicrophoneEnabled;
+        console.log(`[Mic State Update] Mic enabled: ${micEnabled}, setting isMuted to: ${!micEnabled}`);
+        setIsMuted(!micEnabled);
+      };
+
+      // Update immediately
+      updateMutedState();
+
+      // Listen for track muted/unmuted events
+      room.localParticipant.on("trackMuted", updateMutedState);
+      room.localParticipant.on("trackUnmuted", updateMutedState);
+
+      return () => {
+        room.localParticipant.off("trackMuted", updateMutedState);
+        room.localParticipant.off("trackUnmuted", updateMutedState);
+      };
+    }
+  }, [room]);
+
   // Fetch available languages
   useEffect(() => {
     async function getLanguages() {
@@ -120,8 +143,12 @@ const SingleUserControls = () => {
 
   const toggleMic = async () => {
     if (room.localParticipant) {
-      await room.localParticipant.setMicrophoneEnabled(!isMuted);
-      setIsMuted(!isMuted);
+      // Get the ACTUAL current state from LiveKit
+      const currentMicEnabled = room.localParticipant.isMicrophoneEnabled;
+      // Toggle it to the opposite
+      await room.localParticipant.setMicrophoneEnabled(!currentMicEnabled);
+      console.log(`[Mute Toggle] Was ${currentMicEnabled ? 'enabled' : 'disabled'}, now ${!currentMicEnabled ? 'enabled' : 'disabled'}`);
+      // State will be updated by the event listener
     }
   };
 

@@ -48,30 +48,34 @@ LanguageCode = Enum(
 
 
 class Translator:
-    def __init__(self, room: rtc.Room, lang: Enum):
+    def __init__(self, room: rtc.Room, lang: Enum, mode: str = "multi"):
         self.room = room
         self.lang = lang
-        self.context = llm.ChatContext().append(
-            role="system",
-            text=(
-                f"You are a professional translator. Translate ALL input text to {lang.value}. "
-                f"ALWAYS translate every single word, including numbers, names, and common phrases. "
-                f"Never leave any words untranslated. Only output the translation, nothing else. "
-                f"For example: 'uno dos tres' becomes 'one two three' in English."
-            ),
+        self.mode = mode
+        self.system_prompt = (
+            f"You are a professional translator. Translate ALL input text to {lang.value}. "
+            f"ALWAYS translate every single word, including numbers, names, and common phrases. "
+            f"Never leave any words untranslated. Only output the translation, nothing else. "
+            f"For example: 'uno dos tres' becomes 'one two three' in English."
         )
         self.llm = openai.LLM(model="gpt-3.5-turbo")
         self.tts = openai.TTS(voice="alloy")  # Using alloy voice for all languages
         self.audio_source = None
         self.audio_track = None
+        self.enable_tts = (mode == "single")  # Enable TTS in single mode
 
     async def translate(self, message: str, track: rtc.Track, participant: rtc.RemoteParticipant):
         try:
             logger.info(f"Translating to {self.lang.value}: {message}")
-            self.context.append(text=message, role="user")
+
+            # Create a fresh context for each translation to avoid accumulation
+            context = llm.ChatContext().append(
+                role="system",
+                text=self.system_prompt
+            ).append(text=message, role="user")
 
             logger.info("Starting OpenAI LLM chat stream...")
-            stream = self.llm.chat(chat_ctx=self.context)
+            stream = self.llm.chat(chat_ctx=context)
 
             translated_message = ""
             async for chunk in stream:
@@ -101,8 +105,12 @@ class Translator:
                 f"message: {message}, translated to {self.lang.value}: {translated_message}"
             )
 
-            # Generate and publish TTS audio
-            await self._publish_tts_audio(translated_message)
+            # Generate and publish TTS audio if enabled
+            if self.enable_tts:
+                logger.info(f"TTS enabled for {self.mode} mode, generating audio...")
+                await self._publish_tts_audio(translated_message)
+            else:
+                logger.info(f"TTS disabled for {self.mode} mode, skipping audio generation")
         except Exception as e:
             logger.error(f"Translation error: {e}", exc_info=True)
 
@@ -146,6 +154,9 @@ class Translator:
 async def entrypoint(job: JobContext):
     tasks = []
     translators = {}
+    mode = "multi"  # Track current mode
+    input_language = None
+    output_language = None
 
     # Lazy initialization of STT provider
     def get_stt_provider():
@@ -176,8 +187,19 @@ async def entrypoint(job: JobContext):
                 print(" -> ", ev.alternatives[0].text)
 
                 message = ev.alternatives[0].text
-                for translator in translators.values():
-                    asyncio.create_task(translator.translate(message, track, participant))
+
+                # In single mode, only translate to the output language
+                if mode == "single" and output_language:
+                    # Only use the output language translator
+                    if output_language in translators:
+                        logger.info(f"Single mode: Translating to output language ({output_language})")
+                        asyncio.create_task(translators[output_language].translate(message, track, participant))
+                    else:
+                        logger.warning(f"Output language translator not found: {output_language}")
+                else:
+                    # Multi mode: translate to all languages
+                    for translator in translators.values():
+                        asyncio.create_task(translator.translate(message, track, participant))
 
     async def transcribe_track(participant: rtc.RemoteParticipant, track: rtc.Track):
         audio_stream = rtc.AudioStream(track)
@@ -229,23 +251,35 @@ async def entrypoint(job: JobContext):
         """
         When participant attributes change, handle new translation requests.
         """
+        nonlocal mode, input_language, output_language
+
         # Check if this is single-user mode
-        mode = changed_attributes.get("mode", None)
+        current_mode = changed_attributes.get("mode", None)
+
+        if current_mode:
+            mode = current_mode
 
         if mode == "single":
             # Single-user mode: translate to both input and output languages
             input_lang = changed_attributes.get("input_language", None)
             output_lang = changed_attributes.get("output_language", None)
 
-            logger.info(f"Single-user mode detected. Input: {input_lang}, Output: {output_lang}")
+            # Update the stored languages
+            if input_lang:
+                input_language = input_lang
+            if output_lang:
+                output_language = output_lang
+
+            logger.info(f"Single-user mode detected. Input: {input_language}, Output: {output_language}")
 
             # Create translators for both languages if they don't exist
-            for lang in [input_lang, output_lang]:
-                if lang and lang != "en" and lang not in translators:
+            # (We create both but only use output_language for translation)
+            for lang in [input_language, output_language]:
+                if lang and lang not in translators:
                     try:
                         target_language = LanguageCode[lang].value
-                        translators[lang] = Translator(job.room, LanguageCode[lang])
-                        logger.info(f"Added translator for language: {target_language}")
+                        translators[lang] = Translator(job.room, LanguageCode[lang], mode="single")
+                        logger.info(f"Added translator for language: {target_language} (single mode with TTS)")
                     except KeyError:
                         logger.warning(f"Unsupported language requested: {lang}")
         else:
@@ -255,8 +289,8 @@ async def entrypoint(job: JobContext):
                 try:
                     # Create a translator for the requested language
                     target_language = LanguageCode[lang].value
-                    translators[lang] = Translator(job.room, LanguageCode[lang])
-                    logger.info(f"Added translator for language: {target_language}")
+                    translators[lang] = Translator(job.room, LanguageCode[lang], mode="multi")
+                    logger.info(f"Added translator for language: {target_language} (multi mode)")
                 except KeyError:
                     logger.warning(f"Unsupported language requested: {lang}")
 

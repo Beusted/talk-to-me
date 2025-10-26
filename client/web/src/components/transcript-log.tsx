@@ -27,6 +27,7 @@ interface TranscriptLogProps {
   mode?: Mode;
   inputLanguage?: string;
   outputLanguage?: string;
+  collapsed?: boolean;
 }
 
 export default function TranscriptLog({
@@ -34,9 +35,9 @@ export default function TranscriptLog({
   mode = "multi",
   inputLanguage = "en",
   outputLanguage = "es",
+  collapsed = false,
 }: TranscriptLogProps) {
   const room = useRoomContext();
-  const [collapsed, setCollapsed] = useState(false);
   const [items, setItems] = useState<LogItem[]>([]);
 
   useEffect(() => {
@@ -123,39 +124,18 @@ export default function TranscriptLog({
     ));
   }, [items, mode, inputLanguage, outputLanguage]);
 
-  return (
-    <div className="absolute right-0 top-0 h-full flex items-stretch">
-      {/* Toggle handle when collapsed */}
-      {collapsed ? (
-        <div className="flex items-center h-full">
-          <Button
-            variant="outline"
-            className="rounded-l-none rounded-r-none border-r-0"
-            onClick={() => setCollapsed(false)}
-            aria-label="Show transcript log"
-          >
-            Show Log
-          </Button>
-        </div>
-      ) : null}
+  if (collapsed) {
+    return null;
+  }
 
-      {/* Panel */}
-      {!collapsed && (
-        <div className="w-80 h-full bg-black/70 text-white p-3 overflow-y-auto border-l border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold">Transcript Log</h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCollapsed(true)}
-              aria-label="Hide transcript log"
-            >
-              Hide
-            </Button>
-          </div>
-          <ul className="space-y-2">{content}</ul>
+  return (
+    <div className="absolute right-0 top-[71px] bottom-[227px] flex items-stretch z-10">
+      <div className="w-80 h-full bg-black/70 text-white p-3 overflow-y-auto border-l border-white/10">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold">Chat</h3>
         </div>
-      )}
+        <ul className="space-y-2">{content}</ul>
+      </div>
     </div>
   );
 }
