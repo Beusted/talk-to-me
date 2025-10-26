@@ -28,7 +28,7 @@ const PALETTE: string[] = [
 
 export default function Lobby({ partyId }: LobbyProps) {
   const [name, setName] = useState<string>("");
-  const [isHost, setIsHost] = useState<boolean>(false);
+  const [isHost, setIsHost] = useState<boolean>(true);
   const [color, setColor] = useState<string>(() => {
     const idx = Math.floor(Math.random() * PALETTE.length);
     return PALETTE[idx];
@@ -72,9 +72,9 @@ export default function Lobby({ partyId }: LobbyProps) {
       <Card>
         <form action="#" onSubmit={onJoin}>
           <CardHeader>
-            <CardTitle>Join Party</CardTitle>
+            <CardTitle>Join Group</CardTitle>
             <CardDescription>
-              Join or create a party to chat or listen in
+              Join or create a voice group to chat or listen in
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col space-y-4">
@@ -82,7 +82,7 @@ export default function Lobby({ partyId }: LobbyProps) {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="Your display name in the party"
+                placeholder="Your display name in the group"
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
@@ -99,7 +99,7 @@ export default function Lobby({ partyId }: LobbyProps) {
                   htmlFor="host"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Party host
+                  Speaking Participant
                 </label>
               </div>
             </div>

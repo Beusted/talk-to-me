@@ -25,7 +25,7 @@ export default function Home() {
       <div className="w-full max-w-md p-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-white mb-2">Talk to Me</h1>
-          <p className="text-gray-400">Real-time translation for conversations</p>
+          <p className="text-gray-400">Real-time voice translation for face-to-face conversations</p>
         </div>
 
         <div className="space-y-4">

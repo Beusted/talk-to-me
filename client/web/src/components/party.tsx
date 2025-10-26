@@ -182,7 +182,7 @@ export default function Party({ partyId }: PartyProps) {
           <div className="flex gap-3 items-center">
             {state.mode === "multi" && <QRCodeModal url={typeof window !== "undefined" ? window.location.href : ""} size={48} /> }
             <div className="flex flex-col">
-              <p>{state.mode === "single" ? "Single Conversation" : "Listening Party"}</p>
+              <p>{state.mode === "single" ? "Single Conversation" : "Voice Group"}</p>
               <h1 className="font-bold">{ partyId }</h1>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function Party({ partyId }: PartyProps) {
               </Button>
               <Button variant="outline">
                 <Headphones />
-                <p>{participants.length}</p>
+                <p>{participants.length - 1}</p>
               </Button>
             </div>
           </div>
