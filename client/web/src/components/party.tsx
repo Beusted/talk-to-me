@@ -180,7 +180,7 @@ export default function Party({ partyId }: PartyProps) {
       <div className="flex flex-col justify-between h-full w-full">
         <div className="flex justify-between">
           <div className="flex gap-3 items-center">
-            <QRCodeModal url={typeof window !== "undefined" ? window.location.href : ""} size={48} />
+            {state.mode === "multi" && <QRCodeModal url={typeof window !== "undefined" ? window.location.href : ""} size={48} /> }
             <div className="flex flex-col">
               <p>{state.mode === "single" ? "Single Conversation" : "Listening Party"}</p>
               <h1 className="font-bold">{ partyId }</h1>
