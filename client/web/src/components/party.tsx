@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import CircleVisualizer from "./circle-visualizer";
 import { usePartyState } from "@/hooks/usePartyState";
 import { useTranscriptionsByParticipant } from "@/hooks/useTranscriptions";
+import QRCodeModal from "@/components/qr-code-modal";
 
 interface PartyProps {
   partyId: string;
@@ -163,9 +164,12 @@ export default function Party({ partyId }: PartyProps) {
     <div className="w-full h-full p-8 flex flex-col relative">
       <div className="flex flex-col justify-between h-full w-full">
         <div className="flex justify-between">
-          <div className="flex flex-col">
-            <p>Listening Party</p>
-            <h1 className="font-bold">{ partyId }</h1>
+          <div className="flex gap-3 items-center">
+            <QRCodeModal url={typeof window !== "undefined" ? window.location.href : ""} size={48} />
+            <div className="flex flex-col">
+              <p>Listening Party</p>
+              <h1 className="font-bold">{ partyId }</h1>
+            </div>
           </div>
           <div>
             <div className="flex gap-2">
