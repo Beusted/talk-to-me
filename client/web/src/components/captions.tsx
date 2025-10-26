@@ -51,6 +51,40 @@ export default function Captions() {
     };
   }, [room]);
 
+  // In single mode, show both input and output languages
+  if (state.mode === "single") {
+    const inputSegments = Object.values(transcriptions[state.inputLanguage] || {})
+      .sort((a, b) => a.firstReceivedTime - b.firstReceivedTime)
+      .slice(-1);
+
+    const outputSegments = Object.values(transcriptions[state.outputLanguage] || {})
+      .sort((a, b) => a.firstReceivedTime - b.firstReceivedTime)
+      .slice(-1);
+
+    return (
+      <div
+        className={`text-center space-y-2${
+          state.captionsEnabled ? " visible" : " invisible"
+        }`}
+      >
+        {/* Input language (what was spoken) */}
+        {inputSegments.length > 0 && (
+          <div className="text-blue-400 text-2xl font-semibold">
+            {inputSegments[0].text}
+          </div>
+        )}
+
+        {/* Output language (translation) */}
+        {outputSegments.length > 0 && (
+          <div className="text-purple-400 text-3xl font-bold">
+            {outputSegments[0].text}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Multi-user mode: show only selected language
   return (
     <ul
       className={`text-center${

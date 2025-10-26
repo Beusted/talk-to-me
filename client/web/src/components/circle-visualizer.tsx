@@ -94,8 +94,8 @@ export default function CircleVisualizer({
     return null;
   }
 
-  // Compute inner circle size to keep layout stable even for silent participants
-  const innerSize = Math.round(size * (0.55 + Math.min(0.6, smoothedVolume)));
+  // Compute scale factor based on volume to ensure uniform growth
+  const scaleFactor = 0.55 + Math.min(0.6, smoothedVolume);
 
   // Color from participant metadata (fallback to black)
   const color = parseColorFromMetadata(speaker.metadata) ?? "#000000";
@@ -107,7 +107,12 @@ export default function CircleVisualizer({
       style={{ width: `${size}px`, height: `${size}px` }}
     >
       <div
-        style={{ width: `${innerSize}px`, height: `${innerSize}px`, backgroundColor: color }}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          backgroundColor: color,
+          transform: `scale(${scaleFactor})`
+        }}
         className={`rounded-full flex items-center justify-center transition-all duration-75 ${isSpeaking ? "opacity-100 ring-2 ring-white" : "opacity-40"}`}
       >
         <div

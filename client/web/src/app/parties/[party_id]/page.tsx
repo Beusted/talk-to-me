@@ -12,7 +12,7 @@ type PartyPageProps = {
   params: Promise<PartyIdType>;
 };
 
-// Initial state
+// Initial state for multi-user mode
 const initialState: State = {
   token: undefined,
   serverUrl: "",
@@ -20,6 +20,10 @@ const initialState: State = {
   captionsEnabled: true,
   captionsLanguage: "en",
   isHost: false,
+  mode: "multi",
+  currentSpeaker: "user1",
+  inputLanguage: "en",
+  outputLanguage: "es",
 };
 
 // PartyPage component

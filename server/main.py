@@ -54,8 +54,10 @@ class Translator:
         self.context = llm.ChatContext().append(
             role="system",
             text=(
-                f"You are a translator for language: {lang.value}. "
-                f"Your only response should be the exact translation of input text in the {lang.value} language."
+                f"You are a professional translator. Translate ALL input text to {lang.value}. "
+                f"ALWAYS translate every single word, including numbers, names, and common phrases. "
+                f"Never leave any words untranslated. Only output the translation, nothing else. "
+                f"For example: 'uno dos tres' becomes 'one two three' in English."
             ),
         )
         self.llm = openai.LLM(model="gpt-3.5-turbo")
@@ -109,28 +111,30 @@ class Translator:
         try:
             logger.info(f"Generating TTS for: {text}")
 
-            # Create audio source and track if they don't exist
-            if self.audio_source is None:
-                self.audio_source = rtc.AudioSource(24000, 1)  # 24kHz, mono
-                self.audio_track = rtc.LocalAudioTrack.create_audio_track(
-                    f"tts-{self.lang.name}",
-                    self.audio_source
-                )
-                # Publish the audio track
-                await self.room.local_participant.publish_track(
-                    self.audio_track,
-                    rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
-                )
-                logger.info(f"Published TTS audio track: tts-{self.lang.name} for {self.lang.value}")
-
-            # Generate TTS audio using non-streaming synthesis
+            # Generate TTS audio using streaming synthesis
             logger.info("Synthesizing TTS audio...")
-            tts_output = await self.tts.synthesize(text)
+            tts_stream = self.tts.synthesize(text)
 
             # Capture audio frames from the synthesized output
             logger.info("Capturing TTS audio frames...")
             frame_count = 0
-            async for audio_event in tts_output:
+            async for audio_event in tts_stream:
+                # Create audio source and track on first frame (to match TTS output format)
+                if self.audio_source is None:
+                    frame = audio_event.frame
+                    logger.info(f"Creating audio source with sample_rate={frame.sample_rate}, channels={frame.num_channels}")
+                    self.audio_source = rtc.AudioSource(frame.sample_rate, frame.num_channels)
+                    self.audio_track = rtc.LocalAudioTrack.create_audio_track(
+                        f"tts-{self.lang.name}",
+                        self.audio_source
+                    )
+                    # Publish the audio track
+                    await self.room.local_participant.publish_track(
+                        self.audio_track,
+                        rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE)
+                    )
+                    logger.info(f"Published TTS audio track: tts-{self.lang.name} for {self.lang.value}")
+
                 await self.audio_source.capture_frame(audio_event.frame)
                 frame_count += 1
 
@@ -225,15 +229,36 @@ async def entrypoint(job: JobContext):
         """
         When participant attributes change, handle new translation requests.
         """
-        lang = changed_attributes.get("captions_language", None)
-        if lang and lang != "en" and lang not in translators:
-            try:
-                # Create a translator for the requested language
-                target_language = LanguageCode[lang].value
-                translators[lang] = Translator(job.room, LanguageCode[lang])
-                logger.info(f"Added translator for language: {target_language}")
-            except KeyError:
-                logger.warning(f"Unsupported language requested: {lang}")
+        # Check if this is single-user mode
+        mode = changed_attributes.get("mode", None)
+
+        if mode == "single":
+            # Single-user mode: translate to both input and output languages
+            input_lang = changed_attributes.get("input_language", None)
+            output_lang = changed_attributes.get("output_language", None)
+
+            logger.info(f"Single-user mode detected. Input: {input_lang}, Output: {output_lang}")
+
+            # Create translators for both languages if they don't exist
+            for lang in [input_lang, output_lang]:
+                if lang and lang != "en" and lang not in translators:
+                    try:
+                        target_language = LanguageCode[lang].value
+                        translators[lang] = Translator(job.room, LanguageCode[lang])
+                        logger.info(f"Added translator for language: {target_language}")
+                    except KeyError:
+                        logger.warning(f"Unsupported language requested: {lang}")
+        else:
+            # Multi-user mode: original behavior
+            lang = changed_attributes.get("captions_language", None)
+            if lang and lang != "en" and lang not in translators:
+                try:
+                    # Create a translator for the requested language
+                    target_language = LanguageCode[lang].value
+                    translators[lang] = Translator(job.room, LanguageCode[lang])
+                    logger.info(f"Added translator for language: {target_language}")
+                except KeyError:
+                    logger.warning(f"Unsupported language requested: {lang}")
 
     await job.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 

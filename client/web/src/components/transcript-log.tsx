@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RoomEvent, TranscriptionSegment } from "livekit-client";
 import { useRoomContext } from "@livekit/components-react";
 import { Button } from "@/components/ui/button";
+import { Mode } from "@/hooks/usePartyState";
 
 type SegmentWithMeta = TranscriptionSegment & {
   final?: boolean;
@@ -23,9 +24,17 @@ type LogItem = {
 
 interface TranscriptLogProps {
   language?: string; // filter by language code (e.g. "en")
+  mode?: Mode;
+  inputLanguage?: string;
+  outputLanguage?: string;
 }
 
-export default function TranscriptLog({ language }: TranscriptLogProps) {
+export default function TranscriptLog({
+  language,
+  mode = "multi",
+  inputLanguage = "en",
+  outputLanguage = "es",
+}: TranscriptLogProps) {
   const room = useRoomContext();
   const [collapsed, setCollapsed] = useState(false);
   const [items, setItems] = useState<LogItem[]>([]);
@@ -70,12 +79,49 @@ export default function TranscriptLog({ language }: TranscriptLogProps) {
   }, [room, language]);
 
   const content = useMemo(() => {
+    if (mode === "single") {
+      // Group items by timestamp to pair translations
+      const itemsByLang = items.reduce((acc, item) => {
+        if (!acc[item.language]) {
+          acc[item.language] = [];
+        }
+        acc[item.language].push(item);
+        return acc;
+      }, {} as Record<string, LogItem[]>);
+
+      const inputItems = itemsByLang[inputLanguage] || [];
+      const outputItems = itemsByLang[outputLanguage] || [];
+      const maxLen = Math.max(inputItems.length, outputItems.length);
+
+      return Array.from({ length: maxLen }).map((_, i) => {
+        const inputItem = inputItems[i];
+        const outputItem = outputItems[i];
+        return (
+          <li key={`pair-${i}`} className="text-sm leading-snug break-words border-b border-white/10 pb-2 mb-2">
+            {inputItem && (
+              <div className="mb-1">
+                <span className="text-blue-400 text-xs uppercase font-semibold">{inputLanguage}: </span>
+                <span>{inputItem.text}</span>
+              </div>
+            )}
+            {outputItem && (
+              <div>
+                <span className="text-purple-400 text-xs uppercase font-semibold">{outputLanguage}: </span>
+                <span>{outputItem.text}</span>
+              </div>
+            )}
+          </li>
+        );
+      });
+    }
+
+    // Multi-user mode: original behavior
     return items.map((it) => (
       <li key={it.id} className="text-sm leading-snug break-words">
         {it.text}
       </li>
     ));
-  }, [items]);
+  }, [items, mode, inputLanguage, outputLanguage]);
 
   return (
     <div className="absolute right-0 top-0 h-full flex items-stretch">

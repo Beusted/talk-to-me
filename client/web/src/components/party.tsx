@@ -17,6 +17,7 @@ import {
 import { Headphones } from "react-feather";
 import HostControls from "@/components/host-controls";
 import ListenerControls from "@/components/listener-controls";
+import SingleUserControls from "@/components/single-user-controls";
 import Captions from "@/components/captions";
 import TranscriptLog from "@/components/transcript-log";
 import { useEffect, useState } from "react";
@@ -160,6 +161,20 @@ export default function Party({ partyId }: PartyProps) {
     };
   }, [room, remoteParticipants, host]);
 
+  // Render appropriate controls based on mode
+  const renderControls = () => {
+    if (state.mode === "single") {
+      return <SingleUserControls />;
+    } else {
+      // Multi-user mode
+      return host === room.localParticipant ? (
+        <HostControls />
+      ) : (
+        <ListenerControls />
+      );
+    }
+  };
+
   return (
     <div className="w-full h-full p-8 flex flex-col relative">
       <div className="flex flex-col justify-between h-full w-full">
@@ -167,7 +182,7 @@ export default function Party({ partyId }: PartyProps) {
           <div className="flex gap-3 items-center">
             <QRCodeModal url={typeof window !== "undefined" ? window.location.href : ""} size={48} />
             <div className="flex flex-col">
-              <p>Listening Party</p>
+              <p>{state.mode === "single" ? "Single Conversation" : "Listening Party"}</p>
               <h1 className="font-bold">{ partyId }</h1>
             </div>
           </div>
@@ -186,11 +201,7 @@ export default function Party({ partyId }: PartyProps) {
             </div>
           </div>
         </div>
-        {host === room.localParticipant ? (
-          <HostControls />
-        ) : (
-          <ListenerControls />
-        )}
+        {state.mode === "multi" && renderControls()}
       </div>
       <div className="absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
         <div className="flex flex-col items-center relative gap-24">
@@ -199,22 +210,30 @@ export default function Party({ partyId }: PartyProps) {
             <Captions />
           </div>
           {/* Active speakers as circles with per-person transcript bubbles */}
-          <div className="flex flex-wrap items-center justify-center gap-6 max-w-[1000px]">
-            {participants
-              .filter((p) => p.identity !== "agent")
-              .map((p) => (
-                <CircleVisualizer
-                  key={p.sid ?? p.identity}
-                  speaker={p}
-                  size={125}
-                  threshold={0.05}
-                  transcript={transcriptsByParticipant[p.sid]}
-                />
-              ))}
-          </div>
+          {state.mode === "multi" && (
+            <div className="flex flex-wrap items-center justify-center gap-6 max-w-[1000px]">
+              {participants
+                .filter((p) => p.identity !== "agent")
+                .map((p) => (
+                  <CircleVisualizer
+                    key={p.sid ?? p.identity}
+                    speaker={p}
+                    size={125}
+                    threshold={0.05}
+                    transcript={transcriptsByParticipant[p.sid]}
+                  />
+                ))}
+            </div>
+          )}
         </div>
       </div>
-      <TranscriptLog language={state.captionsLanguage} />
+      <TranscriptLog
+        language={state.mode === "single" ? undefined : state.captionsLanguage}
+        mode={state.mode}
+        inputLanguage={state.inputLanguage}
+        outputLanguage={state.outputLanguage}
+      />
+      {state.mode === "single" && renderControls()}
       <RoomAudioRenderer />
     </div>
   );
